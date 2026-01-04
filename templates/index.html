@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Encryption & Decryption</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+        }
+        h1 {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            margin-top:50px;
+            color:  #7300e7;
+        }
+        h2 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .forms{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+        }
+        .section {
+            margin: 50px;
+            margin-top: 0px;
+            max-width: 300px;
+            
+        }
+        input[type="file"],
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button.encrypt {
+            background-color: #007bff;
+        }
+        button.encrypt:hover {
+            background-color: #0056b3;
+        }
+        button.decrypt {
+            background-color: #28a745;
+        }
+        button.decrypt:hover {
+            background-color: #218838;
+        }
+        #status {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #status p {
+            margin: 0;
+        }
+        .success {
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .processing {
+            color: #007bff;
+        }
+        #downloadLinks {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #downloadLinks a {
+            color: #007bff;
+            text-decoration: underline;
+            display: block;
+            margin: 5px 0;
+        }
+        #downloadLinks a:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>File Encryption & Decryption</h1>
+        <div class="forms">
+        
+        <!-- Encryption Form -->
+        <div class="section">
+            <h2>Encrypt a File</h2>
+            <p>Choose Encrypted file</p>
+            <input type="file" id="encryptFile">
+            <input type="password" id="encryptPassword" placeholder="Enter password">
+            <button class="encrypt" onclick="encryptFile()">Encrypt</button>
+        </div>
+        
+        <!-- Decryption Form -->
+        <div class="section">
+            <h2>Decrypt a File</h2>
+            <p>Choose Decrypted file</p>
+            <input type="file" id="decryptFile">
+            <p>Choose key file</p>
+            <input type="file" id="keyFile">
+            <button class="decrypt" onclick="decryptFile()">Decrypt</button>
+        </div>
+        </div>
+        <!-- Status Messages -->
+        <div id="status"></div>
+        
+        <!-- Download Links -->
+        <div id="downloadLinks"></div>
+    </div>
+
+    <script>
+        async function encryptFile() {
+            const fileInput = document.getElementById('encryptFile');
+            const passwordInput = document.getElementById('encryptPassword');
+            const status = document.getElementById('status');
+            const downloadLinks = document.getElementById('downloadLinks');
+
+            if (!fileInput.files[0] || !passwordInput.value) {
+                status.innerHTML = '<p class="error">Please select a file and enter a password.</p>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('password', passwordInput.value);
+
+            status.innerHTML = '<p class="processing">Encrypting...</p>';
+            try {
+                const response = await fetch('/encrypt', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    status.innerHTML = '<p class="success">Encryption successful!</p>';
+                    downloadLinks.innerHTML = `
+                        <a href="/download/${encodeURIComponent(result.encrypted_file)}" download="${result.original_filename}.encrypted">Download Encrypted File</a><br>
+                        <a href="/download/${encodeURIComponent(result.key_file)}" download="${result.original_filename}.key">Download Key File</a>
+                    `;
+                } else {
+                    status.innerHTML = `<p class="error">Error: ${result.error}</p>`;
+                }
+            } catch (error) {
+                status.innerHTML = '<p class="error">Error: Failed to encrypt file.</p>';
+            }
+        }
+
+        async function decryptFile() {
+            const fileInput = document.getElementById('decryptFile');
+            const keyInput = document.getElementById('keyFile');
+            const status = document.getElementById('status');
+            const downloadLinks = document.getElementById('downloadLinks');
+
+            if (!fileInput.files[0] || !keyInput.files[0]) {
+                status.innerHTML = '<p class="error">Please select an encrypted file and a key file.</p>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('key', keyInput.files[0]);
+
+            status.innerHTML = '<p class="processing">Decrypting...</p>';
+            try {
+                const response = await fetch('/decrypt', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    status.innerHTML = '<p class="success">Decryption successful!</p>';
+                    downloadLinks.innerHTML = `
+                        <a href="/download/${encodeURIComponent(result.decrypted_file)}" download="${result.original_filename}">Download Decrypted File</a>
+                    `;
+                } else {
+                    status.innerHTML = `<p class="error">Error: ${result.error}</p>`;
+                }
+            } catch (error) {
+                status.innerHTML = '<p class="error">Error: Failed to decrypt file.</p>';
+            }
+        }
+    </script>
+</body>
+</html>
